@@ -1,3 +1,4 @@
+/*好的*/
 /* 
  * h264bitstream - a library for reading and writing H.264 video
  * Copyright (C) 2005-2007 Auroras Entertainment, LLC
