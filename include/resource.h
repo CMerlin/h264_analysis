@@ -3,6 +3,8 @@
 // Microsoft Visual C++ generated include file.
 // Used by SpecialVH264.rc
 //
+#ifdef _RESOURSE_H_
+#ifndef _RESOURSE_H_
 #define IDM_ABOUTBOX                    0x0010
 #define IDD_ABOUTBOX                    100
 #define IDS_ABOUTBOX                    101
@@ -35,4 +37,6 @@
 #define _APS_NEXT_CONTROL_VALUE         1008
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
+#endif
+
 #endif

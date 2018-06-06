@@ -76,8 +76,8 @@ void usage( )
 }
 
 
-//int h264_analyze(int argc, const char *argv[])
-int main(int argc, char *argv[])
+int h264_analyze(int argc, const char *argv[])
+//int main(int argc, char *argv[])
 {
     FILE* infile;
 
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
     extern char* optarg;
     extern int   optind;
 
-    while ( ( c = getopt_long( argc, argv, "o:p:hv", long_options, &long_options_index) ) != -1 )
+    //while ( ( c = getopt_long( argc, argv, "o:p:hv", long_options, &long_options_index) ) != -1 )
     {
         switch ( c )
         {

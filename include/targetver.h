@@ -1,4 +1,7 @@
 /*新的*/
+#ifdef _TARGETVER_H_
+#ifndef _TARGETVER_H_
+
 #pragma once
 
 // 包括 SDKDDKVer.h 将定义最高版本的可用 Windows 平台。
@@ -7,3 +10,5 @@
 // WIN32_WINNT 宏设置为要支持的平台，然后再包括 SDKDDKVer.h。
 
 //#include <SDKDDKVer.h>
+
+#endif

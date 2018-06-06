@@ -1,25 +1,13 @@
-/*新的*/
-/* 
- * H.264 分析器
- * H.264 Analysis
- *
- * 雷霄骅 Lei Xiaohua
- * leixiaohua1020@126.com
- * 中国传媒大学/数字电视技术
- * Communication University of China / Digital TV Technology
- * http://blog.csdn.net/leixiaohua1020
- * 
- * H.264码流分析工具
- * H.264 Stream Analysis Tools
- *
- */
-//#include "stdafx.h"
-//#include "SpecialVH264Dlg.h"
-#include "common.h"
+/**********************************************************************************
+* Brief:
+* fileName:
+**********************************************************************************/
+#ifndef _COMMON_H_
+#define _COMMON_H_
 
-#if 0
+#if 1
 /*H264一帧数据的结构体*/
-typedef struct
+typedef struct _nalu_t_
 {
   int startcodeprefix_len;      //! 4 for parameter sets and first slice in picture, 3 for everything else (suggested)
   unsigned len;                 //! Length of the NAL unit (Excluding the start code, which does not belong to the NALU)
@@ -31,10 +19,12 @@ typedef struct
   unsigned short lost_packets;  //! true, if packet loss is detected
   int data_offset;
   unsigned char Frametype;      //! 帧类型
-} NALU_t;
+}NALU_t;
 #endif
 
-//int GetFrameType(NALU_t * nal);
-int h264_nal_parse(char *fileurl);
+//#include "NALParse.h"
+int GetFrameType(NALU_t * nal);
+int printTest();
 
+#endif
 

@@ -15,6 +15,11 @@
  */
 //#include "stdafx.h"
 //#include "SpecialVH264Dlg.h"
+#ifndef _H264_ANALYZE_H_
+#define _H264_ANALYZE_H_
+
 
 char* probe_nal_unit(char* filename,int data_offset,int data_lenth);
 int h264_analyze(int argc, char *argv[]);
+
+#endif

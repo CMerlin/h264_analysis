@@ -20,9 +20,11 @@
 #include <string.h>
 #include <memory.h>
 #include "NALParse.h"
+//#include "common.h"
+#include "getFrameType.h"
 
-
-
+#if 0
+/*H264一帧数据的结构体*/
 typedef struct
 {
   int startcodeprefix_len;      //! 4 for parameter sets and first slice in picture, 3 for everything else (suggested)
@@ -34,9 +36,12 @@ typedef struct
   char *buf;                    //! contains the first byte followed by the EBSP
   unsigned short lost_packets;  //! true, if packet loss is detected
   int data_offset;
+  unsigned char Frametype;      //! 帧类型
 } NALU_t;
+#endif
 
 FILE *bits = NULL;                //!< the bit stream file
+//extern int GetFrameType(NALU_t * nal);
 
 static int FindStartCode2 (unsigned char *Buf)
 {
@@ -64,20 +69,17 @@ int GetAnnexbNALU (NALU_t *nalu)
   int pos = 0;
   int StartCodeFound, rewind;
   unsigned char *Buf;
-    
+
   if ((Buf = (unsigned char*)calloc (nalu->max_size , sizeof(char))) == NULL) 
 	  printf ("GetAnnexbNALU: Could not allocate Buf memory\n");
 
   nalu->startcodeprefix_len=3;//初始化码流序列的开始字符为3个字节
-  
-   if (3 != fread (Buf, 1, 3, bits))//从码流中读3个字节
-	   {
-		free(Buf);
-		return 0;
-	   }
+   if (3 != fread (Buf, 1, 3, bits)){
+   	free(Buf); //从码流中读3个字节
+	return 0;
+   }
    info2 = FindStartCode2 (Buf);//判断是否为0x000001 
-   if(info2 != 1) 
-   {
+   if(info2 != 1){
 	//如果不是，再读一个字节
     if(1 != fread(Buf+3, 1, 1, bits))//读一个字节
 		{
@@ -108,11 +110,13 @@ int GetAnnexbNALU (NALU_t *nalu)
    StartCodeFound = 0;
    info2 = 0;
    info3 = 0;
-  
+
+  printf("[PH264][Debug][%s]:StartCodeFound=%d line:%d\n", __func__, StartCodeFound, __LINE__);
   while (!StartCodeFound)
   {
     if (feof (bits))//判断是否到了文件尾
     {
+      printf("[PH264][Debug][%s]:line:%d\n", __func__, __LINE__);
       nalu->len = (pos-1)-nalu->startcodeprefix_len;
       memcpy (nalu->buf, &Buf[nalu->startcodeprefix_len], nalu->len);     
       nalu->forbidden_bit = nalu->buf[0] & 0x80; //1 bit
@@ -149,8 +153,10 @@ int GetAnnexbNALU (NALU_t *nalu)
   nalu->forbidden_bit = nalu->buf[0] & 0x80; //1 bit
   nalu->nal_reference_idc = nalu->buf[0] & 0x60; // 2 bit
   nalu->nal_unit_type = (nalu->buf[0]) & 0x1f;// 5 bit
+  //GetFrameType((unsigned char*)nalu);
+  GetFrameType(nalu);
   free(Buf);
- 
+  printf("[PH264][Debug][%s]:nal_unit_type=%d FType=%d line:%d\n", __func__, nalu->nal_unit_type, (int)(nalu->Frametype), __LINE__);
   return (pos+rewind);//返回两个开始字符之间间隔的字节数，即包含有前缀的NALU的长度
 }
 
@@ -176,7 +182,8 @@ int h264_nal_parse(char *fileurl)
 		//AfxMessageBox (_T("Error AllocNALU: n->buf"));
 		return -1;
 	}
-	
+
+	printf("[PH264][Debug][%s]:fileurl=%s line:%d\n", __func__, fileurl, __LINE__);
 	//------------------
 	int data_offset=0;
 	//赋值-----------------
@@ -197,6 +204,10 @@ int h264_nal_parse(char *fileurl)
 		//if(dlg->m_vh264nallistmaxnum.GetCheck()==1&&nal_num>5000){
 		//	break;
 		//}
+		if(100<=nal_num){
+			printf("[PH264][Debug][%s]:parse data over nal_num=%d line:%d\n", __func__, nal_num, __LINE__);
+			break;
+		}
 		nal_num++;
 	}
 

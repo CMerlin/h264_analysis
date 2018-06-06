@@ -20,6 +20,9 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
+#ifndef _BS_H
+#define _BS_H 
+
 
 #ifndef _H264_BS_H
 #define _H264_BS_H        1
@@ -386,4 +389,5 @@ static inline uint64_t bs_next_bytes(bs_t* bs, int nbytes)
 }
 #endif
 
+#endif
 #endif
