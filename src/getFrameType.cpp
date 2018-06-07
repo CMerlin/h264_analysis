@@ -298,51 +298,37 @@ int bs_read1( bs_t *s );
 */
 int bs_read_ue( bs_t *s );
 
-
+/************************/
 int GetFrameType(NALU_t * nal)
-//int GetFrameType(unsigned char * pdata)
-{
-#if 0
-	NALU_t nData;
-	memcpy(&nData, pdata, sizeof(NALU_t));
-	NALU_t *nal = &nData;
-#endif	
+{	
 	bs_t s;
 	int frame_type = 0; 
-	unsigned char * OneFrameBuf_H264 = NULL ;
-	if ((OneFrameBuf_H264 = (unsigned char *)calloc(nal->len + 4,sizeof(unsigned char))) == NULL)
-	{
-		printf("Error malloc OneFrameBuf_H264\n");
+	unsigned char * OneFrameBuf_H264 = NULL;
+	if ((OneFrameBuf_H264 = (unsigned char *)calloc(nal->len + 4,sizeof(unsigned char))) == NULL){
+		printf("[PH264][Error][%s]:Error malloc OneFrameBuf_H264\n", __func__);
 		return getchar();
 	}
-	if (nal->startcodeprefix_len == 3)
-	{
-		OneFrameBuf_H264[0] = 0x00;
-		OneFrameBuf_H264[1] = 0x00;
+	
+	OneFrameBuf_H264[0] = 0x00;
+	OneFrameBuf_H264[1] = 0x00;
+	if (nal->startcodeprefix_len == 3){
 		OneFrameBuf_H264[2] = 0x01;
 		memcpy(OneFrameBuf_H264 + 3,nal->buf,nal->len);
 	}
-	else if (nal->startcodeprefix_len == 4)
-	{
-		OneFrameBuf_H264[0] = 0x00;
-		OneFrameBuf_H264[1] = 0x00;
+	else if (nal->startcodeprefix_len == 4){
 		OneFrameBuf_H264[2] = 0x00;
 		OneFrameBuf_H264[3] = 0x01;
 		memcpy(OneFrameBuf_H264 + 4,nal->buf,nal->len);
 	}
-	else
-	{
-		printf("H264读取错误！\n");
+	else{
+		printf("[PH264][Error][%s]:wrong startcodeprefix_len=%d\n", __func__, (nal->startcodeprefix_len));
+		return -1;
 	}
+	
 	bs_init( &s,OneFrameBuf_H264 + nal->startcodeprefix_len + 1  ,nal->len - 1 );
-
-
-	if (nal->nal_unit_type == NAL_SLICE || nal->nal_unit_type ==  NAL_SLICE_IDR )
-	{
-		/* i_first_mb */
-		bs_read_ue( &s );
-		/* picture type */
-		frame_type =  bs_read_ue( &s );
+	if (nal->nal_unit_type == NAL_SLICE || nal->nal_unit_type ==  NAL_SLICE_IDR ){
+		bs_read_ue( &s ); /* i_first_mb */
+		frame_type =  bs_read_ue( &s ); /* picture type */
 		switch(frame_type)
 		{
 		case 0: case 5: /* P */
@@ -356,27 +342,22 @@ int GetFrameType(NALU_t * nal)
 			break;
 		case 2: case 7: /* I */
 			nal->Frametype = FRAME_I;
-			//I_Frame_Num ++;
 			break;
 		case 4: case 9: /* SI */
 			nal->Frametype = FRAME_I;
 			break;
 		}
 	}
-	else if (nal->nal_unit_type == NAL_SEI)
-	{
+	else if (nal->nal_unit_type == NAL_SEI){
 		nal->Frametype = NAL_SEI;
 	}
-	else if(nal->nal_unit_type == NAL_SPS)
-	{
+	else if(nal->nal_unit_type == NAL_SPS){
 		nal->Frametype = NAL_SPS;
 	}
-	else if(nal->nal_unit_type == NAL_PPS)
-	{
+	else if(nal->nal_unit_type == NAL_PPS){
 		nal->Frametype = NAL_PPS;
 	}
-	if (OneFrameBuf_H264)
-	{
+	if (NULL != OneFrameBuf_H264){
 		free(OneFrameBuf_H264);
 		OneFrameBuf_H264 = NULL;
 	}

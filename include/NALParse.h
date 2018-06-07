@@ -15,6 +15,8 @@
  */
 //#include "stdafx.h"
 //#include "SpecialVH264Dlg.h"
+#include <errno.h>
+#include <unistd.h>
 #include "common.h"
 
 #if 0
@@ -34,7 +36,17 @@ typedef struct
 } NALU_t;
 #endif
 
+typedef struct _buffer{
+	unsigned char *buf; /*缓存区*/
+	int size; /*缓存区的长度*/
+	int rPos; /*读指针，从0开始*/
+	int wPos; /*写指针，从0开始*/
+	int flag; /*缓存中是否存在目标数据 1-没有目标数据了 */
+}S_BUFFER, *PS_BUFFER;
+
 //int GetFrameType(NALU_t * nal);
 int h264_nal_parse(char *fileurl);
+int parseNalH264(char *filePath);
+
 
 

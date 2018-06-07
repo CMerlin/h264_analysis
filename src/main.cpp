@@ -17,7 +17,8 @@ int main(int argc, const char *argv[])
 	print.print(USERD, "Hello!\n");
 	//h264_analyze(argc, (char**)argv);
 	//h264_analyze(argc, argv);
-	h264_nal_parse(filePath); 
+	//h264_nal_parse(filePath); 
+	parseNalH264(filePath);
 	//GetFrameType(&naluData);
 	printTest();
 	return 0;

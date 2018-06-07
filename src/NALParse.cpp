@@ -57,9 +57,33 @@ static int FindStartCode3 (unsigned char *Buf)
 
 //static bool flag = true;
 static int info2=0, info3=0;
+static int count_nal = 0;
 
 //-------------------
 //CSpecialVH264Dlg *dlg;
+
+
+/***************************************************************************
+* Brief:检查数据的开始码是3个字节（00 00 01）还是4个字节（00 00 00 01）
+* Inparam:buf-数据区 len-数据区的长度 pPos-开始码开始的地方
+* Return:0-没有找到开始码 3-开码是3个字节 4-开始码是4个字节
+****************************************************************************/
+int getStartCodeLen(unsigned char *buf, int len, int *pPos){
+	int pos = 0;
+	while(2 < len){
+		*pPos = pos; /*开始码开始的位置*/
+		if((0x00==buf[pos]) && (0x00==buf[pos+1]) && (0x00==buf[pos+2]) && (0x01==buf[pos+3])){
+			return 4;
+			break;
+		}else if((0x00==buf[pos]) && (0x00==buf[pos+1]) && (0x01==buf[pos+2])){
+			return 3;
+			break;
+		}
+		pos++;
+		len--;
+	}
+	return 0;
+}
 
 
 //这个函数输入为一个NAL结构体，主要功能为得到一个完整的NALU并保存在NALU_t的buf中，获取他的长度，填充F,IDC,TYPE位。
@@ -72,7 +96,7 @@ int GetAnnexbNALU (NALU_t *nalu)
 
   if ((Buf = (unsigned char*)calloc (nalu->max_size , sizeof(char))) == NULL) 
 	  printf ("GetAnnexbNALU: Could not allocate Buf memory\n");
-
+#if 1
   nalu->startcodeprefix_len=3;//初始化码流序列的开始字符为3个字节
    if (3 != fread (Buf, 1, 3, bits)){
    	free(Buf); //从码流中读3个字节
@@ -106,7 +130,22 @@ int GetAnnexbNALU (NALU_t *nalu)
 		nalu->startcodeprefix_len = 3;
 		pos = 3;
 	   }
-   //查找下一个开始字符的标志位
+ #endif
+ #if 0
+ 	printf("[PH264][DEBUG][%s]:begin line:%d\n", __func__,  __LINE__);
+ 	int BufLen = 1024, ret = 0;
+ 	nalu->startcodeprefix_len=3;//初始化码流序列的开始字符为3个字节
+ 	if (3 != fread (Buf, BufLen, 3, bits)){
+		free(Buf); //从码流中读3个字节
+		return 0;
+	}
+	//BufLen = nalu->max_size - 21;
+ 	if(0 >= (ret = getStartCodeLen(Buf, BufLen, &pos))){
+		 printf("[PH264][ERROR][%s]:can not find start code! pos=%d line:%d\n", __func__, pos, __LINE__);
+	}
+	//fsetpos(bits, (fpos_t*)&pos);
+#endif
+	//查找下一个开始字符的标志位
    StartCodeFound = 0;
    info2 = 0;
    info3 = 0;
@@ -154,13 +193,18 @@ int GetAnnexbNALU (NALU_t *nalu)
   nalu->nal_reference_idc = nalu->buf[0] & 0x60; // 2 bit
   nalu->nal_unit_type = (nalu->buf[0]) & 0x1f;// 5 bit
   //GetFrameType((unsigned char*)nalu);
-  GetFrameType(nalu);
+  //GetFrameType(nalu);
+  count_nal++;
   free(Buf);
-  printf("[PH264][Debug][%s]:nal_unit_type=%d FType=%d line:%d\n", __func__, nalu->nal_unit_type, (int)(nalu->Frametype), __LINE__);
+  printf("[PH264][Debug][%s]:nal_unit_type=%d FType=%d count_nal=%d line:%d\n", __func__, nalu->nal_unit_type, (int)(nalu->Frametype), count_nal, __LINE__);
   return (pos+rewind);//返回两个开始字符之间间隔的字节数，即包含有前缀的NALU的长度
 }
 
-
+/***********************************************************************************
+* Brief:解析H264裸数据，把数据存储到NALU_t结构体中（此版本在历史实现）
+* Inparam:fileurl-h264文件存储的位置
+* Return:
+***********************************************************************************/
 int h264_nal_parse(char *fileurl)
 {
 	bits=fopen(fileurl, "r+b");
@@ -204,10 +248,13 @@ int h264_nal_parse(char *fileurl)
 		//if(dlg->m_vh264nallistmaxnum.GetCheck()==1&&nal_num>5000){
 		//	break;
 		//}
+#if 0
 		if(100<=nal_num){
 			printf("[PH264][Debug][%s]:parse data over nal_num=%d line:%d\n", __func__, nal_num, __LINE__);
 			break;
 		}
+#endif
+		//printf("[PH264][Debug][%s]:parse data over nal_num=%d line:%d\n", __func__, nal_num, __LINE__);
 		nal_num++;
 	}
 
@@ -221,4 +268,145 @@ int h264_nal_parse(char *fileurl)
 	return 0;
 }
 
+int printCDATA(unsigned char *buf, int len){
+	int pos = 0;
+	while(0 < len){
+		printf("%02X ", buf[pos]);
+		len--;
+		pos++;
+	}
+	printf("\n");
+	return 0;
+}
 
+/********************************************************************************************
+* Brief:获取NALU_t数据
+* Return:-1-没有找到开始码 -2-没有找到第二个开始码
+*********************************************************************************************/
+int getNaluData(S_BUFFER *sbuf, NALU_t *nalu){
+	int lastPos = 0, curPos = 0; /*上一个出现开始码的位置*/
+	int ret = 0, pos = 0, len = sbuf->wPos - sbuf->rPos;
+	/*寻找第一个开始码*/
+	//printf("rPos=%d ", sbuf->rPos);
+	//printCDATA(sbuf->buf+(sbuf->rPos), 8);
+	ret = getStartCodeLen(sbuf->buf+(sbuf->rPos), len, &pos);
+	if(0>=ret){
+		printf("[PH264][Error][%s]:not find start code line:%d\n", __func__, __LINE__);
+		sbuf->flag = 1;
+		return -1;
+	}
+	/*寻找第二个开始码*/
+	curPos = sbuf->rPos + pos + ret; /*下一个搜索点的位置*/
+	lastPos = curPos;
+	len = sbuf->wPos - curPos; /*搜索区域的长度*/
+	//printf("[PH264][Debug][%s]:len=%d pos=%d curPos=%d-0X%02X startCodeLen=%d line:%d\n", __func__, len, pos, curPos , (*((sbuf->buf+curPos))), ret, __LINE__);
+	ret = getStartCodeLen(sbuf->buf+curPos, len, &pos);
+	if(0>=ret){
+		printf("[PH264][Error][%s]:not find start code line:%d\n", __func__, __LINE__);
+		sbuf->flag = 1;
+		return -2;
+	}
+	/*获取nual相关的信息*/
+	nalu->startcodeprefix_len = ret; /*开始码的长度*/
+	curPos = lastPos + pos; /*下一个搜索点的位置*/
+	//printf("[PH264][Debug][%s]:lastPos=%d end=%d-0x%02X pos=%d line:%d\n", __func__, lastPos, curPos, (sbuf->buf[curPos]), pos, __LINE__);
+	nalu->len = curPos - lastPos; /*NALU数据的长度，不包含开始码*/
+	memcpy((nalu->buf), (sbuf->buf+lastPos), (nalu->len)); /*NALU数据，不包含开始码*/
+	sbuf->rPos = curPos; /*移动sbuf的读写指针*/
+	nalu->forbidden_bit = nalu->buf[0] & 0x80; //1 bit
+	nalu->nal_reference_idc = nalu->buf[0] & 0x60; // 2 bit
+	nalu->nal_unit_type = (nalu->buf[0]) & 0x1f;// 5 bit
+	//printf("[PH264][%s]:rPos=%d Data=%02X line:%d\n", __func__, (sbuf->rPos), (sbuf->buf[sbuf->rPos]), __LINE__);
+	GetFrameType(nalu);
+	
+	return 0;
+}
+
+
+/***********************************************************************************
+* Brief:解析H264裸数据，把数据存储到NALU_t结构体中（此版本在历史实现）
+* Inparam:fileurl-h264文件存储的位置
+* Return:
+***********************************************************************************/
+int parseNalH264(char *filePath){
+	FILE *bitfd = NULL;
+	NALU_t *nalu = NULL;
+	int nal_count=0, ret = 0, pos = 0, count = 0;
+	S_BUFFER buffer;
+
+	printf("[PH264][Debug][%s]:filePath=%s line:%d\n", __func__, filePath, __LINE__);
+	bitfd=fopen(filePath, "r+b");
+	if (NULL == bitfd){
+		printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+		return -1;
+	}
+	/*给nulu分配空间*/
+	if ((nalu = (NALU_t*)calloc (1, sizeof (NALU_t))) == NULL){
+		printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+		return -1;
+	}
+	nalu->max_size = 1024*1024;
+	if ((nalu->buf = (char*)calloc((nalu->max_size), sizeof (char))) == NULL){
+		free(nalu);
+		printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+		return -1;
+	}
+	/*buffer初始化*/
+	memset(&buffer, 0, sizeof(S_BUFFER));
+	buffer.size = 1024*1024;
+	if ((buffer.buf = (unsigned char*)calloc((buffer.size), sizeof (char))) == NULL){
+		free(buffer.buf);
+		printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+		return -1;
+	}
+
+	printf("[PH264][Debug][%s]:rPos=%d line:%d\n", __func__, (buffer.rPos), __LINE__);
+	/*读取并分析数据*/
+	while(!feof(bitfd)){
+		/*移动缓存区的指针*/
+		if(buffer.rPos > (buffer.size/2)){
+			printf("[PH264][Debug][%s]:moveData rPos=%d len=%d line:%d\n", __func__, (buffer.rPos), (buffer.wPos-buffer.rPos), __LINE__);
+			memmove(buffer.buf, (buffer.buf+buffer.rPos), (buffer.wPos-buffer.rPos));
+			buffer.wPos = buffer.wPos - buffer.rPos;
+			buffer.rPos = 0;
+			memset((buffer.buf+buffer.wPos), 0, (buffer.size-buffer.wPos));
+			printf("[PH264][Debug][%s]:moveData rPos=%d len=%d line:%d\n", __func__, (buffer.rPos), (buffer.wPos-buffer.rPos), __LINE__);
+			sleep(1);
+		}
+		ret = fread((void*)(buffer.buf+buffer.wPos), 1, 2048, bitfd);
+		if(ret<0){
+			printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+			break;
+		}else if(0==ret){
+			printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+			continue;
+		}
+		
+		buffer.flag = 0;
+		buffer.wPos += ret;
+		count += ret;
+		printf("[PH264][Error][%s]:rPos=%d wPos=%d begin parse buffer! line:%d\n", __func__, (buffer.rPos), (buffer.wPos), __LINE__);
+		//sleep(2);
+		/*解析缓存区的数据*/
+		while(1 !=buffer.flag){
+			ret = getNaluData(&buffer, nalu);
+			if((-1==ret) || (-2==ret)){
+				printf("[PH264][Error][%s]:ret=%d line:%d\n", __func__, ret, __LINE__);
+				break;
+			}
+			nal_count++;
+			printf("[PH264][Debug][%s]:nal_count=%d Type=%d line:%d\n", __func__, nal_count, (nalu->Frametype), __LINE__);
+		}
+	}
+
+	/*释放内存*/
+	if (NULL != nalu){
+		if (NULL != (nalu->buf)){
+			free(nalu->buf);
+			nalu->buf=NULL;
+		}
+		free(nalu);
+		nalu = NULL;
+	}
+	return 0;
+}
