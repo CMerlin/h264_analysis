@@ -41,6 +41,8 @@ typedef struct
 #endif
 
 FILE *bits = NULL;                //!< the bit stream file
+FILE *h264_fp = NULL;
+
 //extern int GetFrameType(NALU_t * nal);
 
 static int FindStartCode2 (unsigned char *Buf)
@@ -322,6 +324,46 @@ int getNaluData(S_BUFFER *sbuf, NALU_t *nalu){
 	return 0;
 }
 
+/*********************************************************************************
+* Brif: 将指定类型的数据存储到文件中
+* Return:
+**********************************************************************************/
+int writeDataToFile(NALU_t *nalu, int type){
+	int ret = 0;
+	unsigned char sCode1[4] = {0x00, 0x00, 0x01, 0x00}, sCode2[4] = {0x00, 0x00, 0x00, 0x01};
+	if((ret = access("./doc/H264_file",0)) != 0){
+		if(NULL != h264_fp){
+			printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+			fclose(h264_fp);
+			sleep(3);
+		}
+		printf("[PH264][Error][%s]:info=%s line:%d\n", __func__, strerror(errno), __LINE__);
+		h264_fp = NULL;
+		sleep(3);
+		return -1;
+	}
+	if(NULL == h264_fp){
+		h264_fp = fopen("./doc/H264_file.h264","wb");
+	}
+	/*将指定数据存储到文件中*/
+	if(type == (nalu->Frametype)){
+		return 0;
+	}
+	if(NULL !=h264_fp){
+		if(3==nalu->startcodeprefix_len){
+			memmove((nalu->buf+3), (nalu->buf), (nalu->len));
+			memcpy((nalu->buf), sCode1, 3);
+		}else if(4==nalu->startcodeprefix_len){
+			memmove((nalu->buf+4), (nalu->buf), (nalu->len));
+			memcpy((nalu->buf), sCode2, 4);
+		}
+		//printf("[PH264][Debug][%s]:Type=%d-%d %02X-%02X-%02X line:%d\n", __func__, (nalu->Frametype) , (type), (nalu->buf[0]), (nalu->buf[1]), (nalu->buf[2]), __LINE__);
+		fwrite((nalu->buf), (nalu->len+(nalu->startcodeprefix_len)),1,h264_fp);
+		fflush(h264_fp);
+	}
+
+	return 0;
+}
 
 /***********************************************************************************
 * Brief:解析H264裸数据，把数据存储到NALU_t结构体中（此版本在历史实现）
@@ -371,7 +413,7 @@ int parseNalH264(char *filePath){
 			buffer.rPos = 0;
 			memset((buffer.buf+buffer.wPos), 0, (buffer.size-buffer.wPos));
 			printf("[PH264][Debug][%s]:moveData rPos=%d len=%d line:%d\n", __func__, (buffer.rPos), (buffer.wPos-buffer.rPos), __LINE__);
-			sleep(1);
+			//sleep(1);
 		}
 		ret = fread((void*)(buffer.buf+buffer.wPos), 1, 2048, bitfd);
 		if(ret<0){
@@ -395,7 +437,8 @@ int parseNalH264(char *filePath){
 				break;
 			}
 			nal_count++;
-			printf("[PH264][Debug][%s]:nal_count=%d Type=%d line:%d\n", __func__, nal_count, (nalu->Frametype), __LINE__);
+			writeDataToFile(nalu, FRAME_B);
+			printf("[PH264][Debug][%s]:nal_count=%d sLen=%d Type=%d line:%d\n", __func__, nal_count, (nalu->startcodeprefix_len), (nalu->Frametype), __LINE__);
 		}
 	}
 

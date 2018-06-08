@@ -48,6 +48,7 @@ typedef struct Tag_NALU_t
 } NALU_t;
 #endif
 
+#if 0
 /*nal类型*/
 enum nal_unit_type_e
 {
@@ -70,6 +71,7 @@ enum Frametype_e
 	FRAME_P  = 16,
 	FRAME_B  = 17
 };
+#endif
 
 void bs_init( bs_t *s, void *p_data, int i_data )
 {
