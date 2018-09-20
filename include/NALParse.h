@@ -19,6 +19,12 @@
 #include <unistd.h>
 #include "common.h"
 
+typedef struct _resolution{
+	int width;
+	int height;
+	int fRate;
+}S_RESOLUTION, *PS_RESOLUTION;
+
 #if 0
 /*H264一帧数据的结构体*/
 typedef struct
@@ -47,6 +53,9 @@ typedef struct _buffer{
 //int GetFrameType(NALU_t * nal);
 int h264_nal_parse(char *fileurl);
 int parseNalH264(char *filePath);
+int getResolution(NALU_t *pnalu);
+
+
 
 
 

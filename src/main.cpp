@@ -10,7 +10,8 @@
 int main(int argc, const char *argv[])
 {
 	//NALU_t naluData;
-	char filePath[256] = {"./doc/cuc_ieschool.h264"};
+	//char filePath[256] = {"./doc/cuc_ieschool.h264"};
+	char filePath[256] = {"./doc/iphoneX.h264"};
 	//char array[32][32] = {0};
 	const int TIME = 1;
 	printInfo print(USERD, TIME);
